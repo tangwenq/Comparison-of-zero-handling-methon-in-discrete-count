@@ -14,7 +14,7 @@ library(ggplot2)
 library(extraDistr)
 library(dplyr)
 library(patchwork)
-
+library(zCompositions)
 set.seed(123)
 
 ############################################################
@@ -48,11 +48,6 @@ simplex_xy <- function(A, B, C) {
   data.frame(x = x, y = y)
 }
 
-## Centered log-ratio transform
-clr <- function(x) {
-  gm <- exp(mean(log(x)))
-  log(x / gm)
-}
 
 ## Triangle vertices for the 3-part simplex
 triangle_vertices <- simplex_xy(
@@ -389,3 +384,4 @@ fig_S2 <- ggplot(shift_df, aes(scale, shift)) +
   )
 
 save_figure(fig_S2, "Fig_S2_logratio_shift")
+
