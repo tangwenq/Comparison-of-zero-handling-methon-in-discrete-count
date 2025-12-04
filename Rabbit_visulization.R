@@ -1,8 +1,7 @@
 ###############################
 ## Rabbit count data: visualization scripts
-## - Figure 1: count distribution (binned)
-## - Figure 2: heatmap of sorted counts (by mean abundance)
-## - Figure 3: log–log mean–variance plot
+## - Figure 5(a): heatmap of sorted counts (by mean abundance)
+## - Figure 5(b): log–log mean–variance plot
 ###############################
 
 ## ====== Load packages ======
@@ -27,44 +26,9 @@ rabbits_data <- rabbits_data[, -1]
 dim(rabbits_data)
 head(rabbits_data)
 
-## =========================================================
-## Figure 1: Binned count distribution across all OTUs/samples
-## =========================================================
-
-# Reshape to long format: each row is one count value
-rabbits_long <- rabbits_data %>%
-  pivot_longer(cols = everything(), names_to = "OTU", values_to = "Count")
-
-# Define bins on the original count scale
-bins <- c(0, 1, 10, 20, 50, 100, 200, 500, 1000, 5000)
-
-rabbits_long <- rabbits_long %>%
-  mutate(bin = cut(Count, breaks = bins, include.lowest = TRUE, right = FALSE))
-
-# Compute percentage of entries in each bin
-bin_summary <- rabbits_long %>%
-  group_by(bin) %>%
-  summarise(percent = n() / nrow(rabbits_long) * 100, .groups = "drop")
-
-# Plot and save Figure 1
-p_dist <- ggplot(bin_summary, aes(x = bin, y = percent)) +
-  geom_bar(stat = "identity", fill = "skyblue") +
-  scale_y_continuous(expand = c(0, 0)) +
-  labs(
-    x = "Count bin",
-    y = "Percentage of entries",
-    title = "Rabbit data: empirical count distribution"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-
-ggsave("rabbit_count_distribution.pdf", p_dist, width = 7, height = 5)
-ggsave("rabbit_count_distribution.png", p_dist, width = 7, height = 5, dpi = 300)
 
 ## =========================================================
-## Figure 2: Heatmap of Rabbit counts sorted by mean abundance
+## Figure 5(a): Heatmap of Rabbit counts sorted by mean abundance
 ## =========================================================
 
 # Sort OTUs (columns) by their mean abundance
@@ -164,7 +128,7 @@ ggsave(
 )
 
 ## =========================================================
-## Figure 3: Log–log mean–variance relationship by mean-abundance tertile
+## Figure 5(b): Log–log mean–variance relationship by mean-abundance tertile
 ## =========================================================
 
 species_stats <- data.frame(
@@ -229,3 +193,4 @@ ggsave(
   height = 6,
   dpi = 300
 )
+
