@@ -69,6 +69,15 @@ The main files are:
   fully observed ground truth. Boxplots of error metrics are generated
   for the appendix figures.
 
+- `rabbit_visulization.R`:  
+  Visualization script for the Rabbits count dataset. It produces
+  Figure 5, including:  
+  • Figure 5(a) — a heatmap of the Rabbits count table after sorting
+    taxa by mean abundance  
+  • Figure 5(b) — a log–log mean–variance plot illustrating
+    sparsity and overdispersion in the raw count data  
+  These plots provide an overview of structural characteristics of the
+  dataset before imputation. Publication-ready PDF files are generated.
 
 - `README.md`: The main documentation file summarizing the project,
   experimental designs, methods compared, figure structure, and file
