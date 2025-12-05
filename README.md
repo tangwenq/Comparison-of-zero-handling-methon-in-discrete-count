@@ -17,19 +17,27 @@ The main files are:
 ---
 
 - `generate_figures_coda_discrete.R`: This script generates all geometric
-  illustrations related to discrete compositional data (CoDA). It compares
+  illustrations related to discrete data and compositional data analysis. It compares
   the integer lattice representation of count data with the continuous
   simplex geometry and visualizes distortions introduced by sequencing
   depth, closure, scaling, and ceiling quantization. The file produces
   Figures 2–4, including lattice vs simplex comparisons, CLR shifts under
   varying depths, and log-ratio effects of discretization.
 
-- `rabbit_comparison.R`: The main driver script for the core simulation
-  comparison. It constructs censored datasets from the Rabbits data,
-  applies a full suite of zero-imputation methods, and computes the CED
-  and ADCS error metrics (raw and ceiling versions) across dimensions
-  **m = 50, 500, 1000** and a range of missingness probabilities. Results
-  are stored as error matrices and later visualized in Figures 6 and 7.
+- `rabbit_comparison.R`:  
+  Main script conducting the full zero-imputation comparison for the
+  Rabbits dataset. It constructs left-censored compositional datasets,
+  applies all imputation methods, and computes both CED and ADCS error
+  metrics (raw and ceiling variants) across dimensions **m = 50, 500,
+  1000** and a range of missingness probabilities.  
+  The script also compiles and visualizes the resulting error matrices,
+  producing Figures 6–8:  
+  • Figure 6 — boxplots of method performance under varying p  
+  • Figure 7 — mean error curves across missingness probabilities  
+  • Figure 8 — scaling of average error as the dimension m increases
+    under fixed missingness levels  
+  Publication-ready PDF figures are automatically generated.
+
 
 - `rabbit_pls_check.R`: This script performs a detailed local diagnostic
   study of PLS-based imputation under a single example setting
@@ -53,7 +61,7 @@ The main files are:
   trends under fixed missingness (Figure 8). It also prepares publication-
   quality PDF outputs.
 
-- `simulationdata_comparison.R`: The primary script for the appendix
+- `simulationdata_comparison_appendix.R`: The primary script for the appendix
   simulation based on **zero-free synthetic compositional count data**
   derived from the `microbialdata` example. It replicates the main
   comparison framework at **m = 50** components but without naturally
@@ -61,10 +69,6 @@ The main files are:
   fully observed ground truth. Boxplots of error metrics are generated
   for the appendix figures.
 
-- `rabbit_time_plotting.R` (if separated): This script reads the runtime
-  CSV files produced by `rabbit_time_recording.R` and constructs the
-  combined runtime figure (Figure 9), showing mean execution times as a
-  function of dimension *m* and missingness probability *p*.
 
 - `README.md`: The main documentation file summarizing the project,
   experimental designs, methods compared, figure structure, and file
