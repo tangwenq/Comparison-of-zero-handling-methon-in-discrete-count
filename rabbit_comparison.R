@@ -1,10 +1,36 @@
 
-###############################
-## Main comparison script
+###########################################################################
+## Main comparison script and plots
 ## Discrete CoDA zero-imputation methods
-## Example setting: m = 500 variables
-###############################
-
+## Example base setting: m = 500 variables
+###########################################################################
+#                                                                         #
+#   This script contains the main simulation comparison and three figure  #
+#   generations based on two experimental setups.                         #
+#                                                                         #
+#   Figures 6 & 7 – Fixed m, increasing p                                 #
+#   -------------------------------------------------------------------   #
+#   • Setting: fixed dimension m (e.g. M = 50, 500, 1000),                #
+#              varying proportion of missingness p.                       #
+#   • Figure 6: boxplots of CED / ADCS errors (raw and ceiling versions)  #
+#               across methods, probabilities, and M.                     #
+#   • Figure 7: mean error line plots (CED / ADCS, raw and ceiling)       #
+#               across methods, probabilities, and M.                     #
+#   • Input: RData files (m_compare_results) for M = 50, 500, 1000.       #
+#                                                                         #
+#   Figure 8 – Fixed p, increasing m                                      #
+#   -------------------------------------------------------------------   #
+#   • Setting: fixed proportions of missingness p = 0.2 and p = 0.5,      #
+#              varying dimension m.                                       #
+#   • Figure 8: mean error line plots (CED / ADCS, raw and ceiling)       #
+#               as a function of m for each method.                       #
+#   • Input: RDS files of the form                                        #
+#       P=0.2/result_m<m>_prob0.2.rds                                     #
+#       P=0.5/result_m<m>_prob0.5.rds                                     #
+#     where each file contains a list of simulation runs with matrices    #
+#     named e.g. ADCS_raw, ADCS_ceil, CED_raw, CED_ceil.                  #
+#                                                                         #
+###########################################################################
 # ====== Load packages ======
 library(readxl)
 library(ggplot2)
@@ -14,7 +40,8 @@ library(zCompositions)
 library(vegan)
 library(foreach)
 library(doMPI)
-
+library(dplyr)
+library(patchwork)
 # ====== Download rabbit data (Greenacre, 2021) ======
 url <- "https://github.com/michaelgreenacre/CODAinPractice/raw/master/Rabbits.xlsx"
 temp_file <- tempfile(fileext = ".xlsx")
@@ -255,3 +282,339 @@ save(m_compare_results, seeds, file = "results500_rabbit.RData")
 # ====== Shutdown MPI ======
 closeCluster(cl)
 mpi.quit()
+
+
+
+
+# ============================== #
+#   Load simulation result files #
+# ============================== #
+
+load(file.path("M=50",   "results50_rabbit.RData"))
+res_m50 <- m_compare_results
+
+load(file.path("M=500",  "results500_rabbit.RData"))
+res_m500 <- m_compare_results
+
+load(file.path("M=1000", "results1000_rabbit.RData"))
+res_m1000 <- m_compare_results
+
+# ============================== #
+#     Method sets and metadata   #
+# ============================== #
+
+methods_all <- c(
+  "lmrob","PLS","mult_lognorm","mult_repl",
+  "lr_da","lr_em","mult_KMSS","lr_SVD",
+  "add1","dl_065","dl_unif","GBM"
+)
+
+fixed_methods <- c(
+  "mult_lognorm","mult_repl","mult_KMSS",
+  "lr_da","lr_em","PLS","lr_SVD",
+  "dl_065","dl_unif","GBM","add1"
+)
+
+fixed_methods <- setdiff(fixed_methods, c("lmrob","dl_065"))
+
+probs <- c(0.05, 0.4, 0.6, 0.8)
+prob_strs <- sub("\\.?0+$", "", as.character(probs))
+
+color_values <- c(
+  "PLS"          = "#E41A1C",
+  "mult_lognorm" = "#377EB8",
+  "mult_repl"    = "#4DAF4A",
+  "lr_da"        = "#984EA3",
+  "lr_em"        = "#FF7F00",
+  "mult_KMSS"    = "#FB9A99",
+  "lr_SVD"       = "#A65628",
+  "add1"         = "#F781BF",
+  "dl_unif"      = "#999999",
+  "GBM"          = "#66C2A5"
+)
+
+shape_values <- c(
+  "PLS"          = 16,
+  "mult_lognorm" = 17,
+  "mult_repl"    = 15,
+  "lr_da"        = 3,
+  "lr_em"        = 7,
+  "mult_KMSS"    = 8,
+  "lr_SVD"       = 18,
+  "add1"         = 4,
+  "dl_unif"      = 9,
+  "GBM"          = 2
+)
+
+# ====================================================== #
+#   Figure 6 – Boxplots over p and M (CED / ADCS)        #
+# ====================================================== #
+
+extract_results <- function(res_list, M_value, metric_prefix){
+  df_list <- list()
+  
+  for(p in prob_strs){
+    ceil_key <- sprintf("%sceil_m%d_prob%s", metric_prefix, M_value, p)
+    raw_key  <- sprintf("%sraw_m%d_prob%s",  metric_prefix, M_value, p)
+
+    if(is.null(res_list[[ceil_key]]) || is.null(res_list[[raw_key]])) next
+
+    B <- nrow(res_list[[ceil_key]])
+    methods_sel <- fixed_methods
+    if(M_value != 50) methods_sel <- setdiff(methods_sel, "lr_em")
+    methods_exist <- intersect(methods_sel, colnames(res_list[[ceil_key]]))
+    if(length(methods_exist) == 0) next
+
+    df_ceil <- data.frame(
+      error  = as.numeric(res_list[[ceil_key]][, methods_exist, drop = FALSE]),
+      method = factor(rep(methods_exist, each = B), levels = fixed_methods),
+      metric = "Ceil",
+      prob   = p,
+      M_dim  = factor(paste0("M=", M_value), levels = c("M=50","M=500","M=1000"))
+    )
+
+    df_raw <- data.frame(
+      error  = as.numeric(res_list[[raw_key]][, methods_exist, drop = FALSE]),
+      method = factor(rep(methods_exist, each = B), levels = fixed_methods),
+      metric = "Raw",
+      prob   = p,
+      M_dim  = factor(paste0("M=", M_value), levels = c("M=50","M=500","M=1000"))
+    )
+
+    df_list[[paste0("ceil_", p)]] <- df_ceil
+    df_list[[paste0("raw_",  p)]] <- df_raw
+  }
+  bind_rows(df_list)
+}
+
+CED_box_df <- bind_rows(
+  extract_results(res_m50,   50,  "CED"),
+  extract_results(res_m500,  500, "CED"),
+  extract_results(res_m1000, 1000,"CED")
+)
+
+ADCS_box_df <- bind_rows(
+  extract_results(res_m50,   50,  "ADCS"),
+  extract_results(res_m500,  500, "ADCS"),
+  extract_results(res_m1000, 1000,"ADCS")
+)
+
+plot_box <- function(df){
+  ggplot(df, aes(x = method, y = error, fill = metric)) +
+    geom_boxplot(alpha = 0.45, outlier.size = 0.35,
+                 position = position_dodge(width = 0.8)) +
+    scale_y_log10() +
+    facet_grid(rows = vars(M_dim), cols = vars(prob), scales = "free_y") +
+    labs(x = "", y = "Error (log10)") +
+    theme_bw(base_size = 16) +
+    theme(
+      legend.position = "top",
+      legend.title    = element_blank(),
+      axis.text.x     = element_text(angle = 45, hjust = 1, size = 11),
+      strip.text      = element_text(size = 13, face = "bold")
+    )
+}
+
+p_box_CED  <- plot_box(CED_box_df)
+p_box_ADCS <- plot_box(ADCS_box_df)
+
+ggsave("Figure6_CED_boxplot.pdf",  p_box_CED,  width = 12, height = 8)
+ggsave("Figure6_ADCS_boxplot.pdf", p_box_ADCS, width = 12, height = 8)
+
+combined_fig6 <- p_box_CED + p_box_ADCS + 
+  plot_layout(ncol = 2, guides = "collect") &
+  theme(legend.position = "top")
+
+ggsave("Figure6_combined.pdf", combined_fig6, width = 16, height = 8)
+
+# ====================================================== #
+#   Figure 7 – Mean lines over p and M (CED / ADCS)      #
+# ====================================================== #
+
+extract_means <- function(res_list, metric_prefix){
+  df_list <- list()
+  for(M_value in c(50, 500, 1000)){
+    for(p in prob_strs){
+
+      key_ceil <- sprintf("%sceil_m%d_prob%s", metric_prefix, M_value, p)
+      key_raw  <- sprintf("%sraw_m%d_prob%s",  metric_prefix, M_value, p)
+
+      if(!(key_ceil %in% names(res_list))) next
+
+      methods_sel <- fixed_methods
+      if(M_value != 50) methods_sel <- setdiff(methods_sel, "lr_em")
+      methods_exist <- intersect(methods_sel, colnames(res_list[[key_ceil]]))
+      if(length(methods_exist) == 0) next
+
+      mat_ceil <- res_list[[key_ceil]][, methods_exist, drop = FALSE]
+      mat_raw  <- res_list[[key_raw]][,  methods_exist, drop = FALSE]
+
+      means_ceil <- colMeans(mat_ceil, na.rm = TRUE)
+      means_raw  <- colMeans(mat_raw,  na.rm = TRUE)
+
+      df_list[[paste0("ceil_", M_value, p)]] <- data.frame(
+        prob     = as.numeric(p),
+        M_value  = M_value,
+        method   = names(means_ceil),
+        mean_val = means_ceil,
+        type     = "Ceil"
+      )
+      df_list[[paste0("raw_",  M_value, p)]] <- data.frame(
+        prob     = as.numeric(p),
+        M_value  = M_value,
+        method   = names(means_raw),
+        mean_val = means_raw,
+        type     = "Raw"
+      )
+    }
+  }
+  bind_rows(df_list)
+}
+
+CED_line_df  <- bind_rows(
+  extract_means(res_m50,  "CED"),
+  extract_means(res_m500, "CED"),
+  extract_means(res_m1000,"CED")
+)
+
+ADCS_line_df <- bind_rows(
+  extract_means(res_m50,  "ADCS"),
+  extract_means(res_m500, "ADCS"),
+  extract_means(res_m1000,"ADCS")
+)
+
+CED_line_df$method  <- factor(CED_line_df$method,  levels = fixed_methods)
+ADCS_line_df$method <- factor(ADCS_line_df$method, levels = fixed_methods)
+
+plot_line <- function(df){
+  ggplot(df, aes(x = prob, y = mean_val, color = method)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2.5) +
+    scale_y_log10() +
+    facet_grid(rows = vars(M_value), cols = vars(type), scales = "free_y") +
+    labs(x = "Probability of Missingness", y = "Mean Error (log10)") +
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.position = "top",
+      legend.title    = element_blank(),
+      axis.text.x     = element_text(angle = 45, hjust = 1),
+      strip.text      = element_text(size = 13, face = "bold")
+    )
+}
+
+p_line_CED  <- plot_line(CED_line_df)
+p_line_ADCS <- plot_line(ADCS_line_df)
+
+ggsave("Figure7_CED_line.pdf",  p_line_CED,  width = 12, height = 8)
+ggsave("Figure7_ADCS_line.pdf", p_line_ADCS, width = 12, height = 8)
+
+combined_fig7 <- p_line_CED + p_line_ADCS +
+  plot_layout(ncol = 2, guides = "collect") &
+  theme(legend.position = "top")
+
+ggsave("Figure7_combined.pdf", combined_fig7, width = 16, height = 8)
+
+# ====================================================== #
+#   Figure 8 – Fixed p, varying m (CED / ADCS)           #
+# ====================================================== #
+
+m_values  <- c(50,100,200,300,400,500,600,700,800,900,1000,1400,1800)
+probs_dim <- c(0.2, 0.5)
+
+plot_methods_dim <- setdiff(methods_all, c("lmrob","dl_065","lr_da","lr_em"))
+
+extract_means_prob <- function(metric_field, prob_val) {
+  prob_str   <- sub("\\.?0+$", "", as.character(prob_val))
+  means_list <- list()
+  
+  for (m in m_values) {
+    base_path <- sprintf("P=%.1f", prob_val)
+    file_path <- file.path(base_path, sprintf("result_m%d_prob%s.rds", m, prob_str))
+    
+    if (!file.exists(file_path)) next
+    
+    tmp <- readRDS(file_path)
+    mat_list <- lapply(tmp, function(x) x[[metric_field]])
+    mat <- do.call(rbind, mat_list)
+    if (is.null(mat) || ncol(mat) == 0) next
+    
+    if (m > 1200) {
+      methods <- setdiff(methods_all, c("PLS","lr_SVD","lr_da","lr_em","lmrob"))
+    } else if (m > 500) {
+      methods <- setdiff(methods_all, c("PLS","lmrob"))
+    } else {
+      methods <- methods_all
+    }
+    methods <- intersect(methods, colnames(mat))
+    if (length(methods) == 0) next
+    
+    mean_val <- colMeans(mat[, methods, drop = FALSE], na.rm = TRUE)
+    
+    df <- data.frame(
+      prob     = factor(prob_val),
+      M        = m,
+      method   = names(mean_val),
+      mean_val = mean_val,
+      metric   = metric_field
+    )
+    means_list[[as.character(m)]] <- df
+  }
+  
+  bind_rows(means_list)
+}
+
+get_metric_data <- function(metric_field) {
+  bind_rows(lapply(probs_dim, function(p) extract_means_prob(metric_field, p))) %>%
+    filter(method %in% plot_methods_dim) %>%
+    mutate(method = factor(method, levels = names(color_values)))
+}
+
+ADCS_raw_df  <- get_metric_data("ADCS_raw")  %>% mutate(type = "Raw",  group = "ADCS")
+ADCS_ceil_df <- get_metric_data("ADCS_ceil") %>% mutate(type = "Ceil", group = "ADCS")
+CED_raw_df   <- get_metric_data("CED_raw")   %>% mutate(type = "Raw",  group = "CED")
+CED_ceil_df  <- get_metric_data("CED_ceil")  %>% mutate(type = "Ceil", group = "CED")
+
+ADCS_df <- bind_rows(ADCS_raw_df, ADCS_ceil_df)
+CED_df  <- bind_rows(CED_raw_df,  CED_ceil_df)
+
+plot_lines_dim <- function(df, x_label) {
+  ggplot(df, aes(x = M, y = mean_val, color = method, shape = method)) +
+    geom_line(aes(group = method), linewidth = 1) +
+    geom_point(size = 3) +
+    scale_y_log10() +
+    scale_color_manual(values = color_values) +
+    scale_shape_manual(values = shape_values) +
+    facet_grid(rows = vars(prob), cols = vars(type), scales = "free_y") +
+    labs(x = x_label, y = "Mean Value (log10)") +
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.title    = element_blank(),
+      legend.position = "top",
+      legend.text     = element_text(size = 13),
+      axis.text.x     = element_text(angle = 45, hjust = 1, size = 13),
+      axis.text.y     = element_text(size = 13),
+      axis.title      = element_text(size = 14),
+      strip.text      = element_text(size = 12, face = "bold")
+    )
+}
+
+p_CED_dim  <- plot_lines_dim(CED_df,  x_label = "CED: dimension m")
+p_ADCS_dim <- plot_lines_dim(ADCS_df, x_label = "ADCS: dimension m")
+
+combined_fig8 <- p_CED_dim + p_ADCS_dim +
+  plot_layout(ncol = 2, guides = "collect") &
+  theme(legend.position = "top")
+
+ggsave(
+  "Figure8_CED_ADCS_dimension_m.pdf",
+  combined_fig8, width = 14, height = 9, useDingbats = FALSE
+)
+
+
+
+
+
+
+
+
+
