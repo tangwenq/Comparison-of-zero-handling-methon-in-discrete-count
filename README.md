@@ -70,4 +70,12 @@ The main files are:
   experimental designs, methods compared, figure structure, and file
   functionality.
 
-- `LICENSE`: Project license (LGPL ≥ 2.1).
+**Authors** 
+
+Tang, W.
+
+
+
+**License**
+Project license (MIT).
+
