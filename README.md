@@ -2,7 +2,7 @@
 
 This project contains code to reproduce the results of the study on evaluating discrete and continuous zero-replacement strategies for high-dimensional compositional datasets, using both real data (Rabbits.xlsx) and synthetic simulation designs.
 
-The goal of the project is to benchmark a broad set of imputation methods, quantify their reconstruction accuracy under different censoring regimes, analyze computational complexity, and visualize the geometric effects of discretization and scaling.
+The goal of the project is to benchmark a broad set of imputation methods, quantify their reconstruction accuracy under different zero proportions and dimension, analyze computational complexity, and visualize the geometric effects of discretization and scaling.
 
 ---
 
@@ -16,79 +16,58 @@ The main files are:
 
 ---
 
-### **`generate_figures_coda_discrete.R`**  
-This file generates all figures illustrating the geometric distortions caused by discretization of compositional data.
+- `generate_figures_coda_discrete.R`: This script generates all geometric
+  illustrations related to discrete compositional data (CoDA). It compares
+  the integer lattice representation of count data with the continuous
+  simplex geometry and visualizes distortions introduced by sequencing
+  depth, closure, scaling, and ceiling quantization. The file produces
+  Figures 2–4, including lattice vs simplex comparisons, CLR shifts under
+  varying depths, and log-ratio effects of discretization.
 
-Figures produced include:  
-- *Figure 2*: Integer lattice **N²** vs continuous 3-part simplex  
-- *Figure 3(a)*: Simplex closure at different sequencing depths  
-- *Figure 3(b)*: CLR coordinates under varying sequencing depths  
-- *Figure 4(a)*: Scaling + ceiling quantization (scatter)  
-- *Figure 4(b)*: Scaling + quantization effects on log-ratio shifts  
+- `rabbit_comparison.R`: The main driver script for the core simulation
+  comparison. It constructs censored datasets from the Rabbits data,
+  applies a full suite of zero-imputation methods, and computes the CED
+  and ADCS error metrics (raw and ceiling versions) across dimensions
+  **m = 50, 500, 1000** and a range of missingness probabilities. Results
+  are stored as error matrices and later visualized in Figures 6 and 7.
 
----
+- `rabbit_pls_check.R`: This script performs a detailed local diagnostic
+  study of PLS-based imputation under a single example setting
+  (**m = 200**, **p = 0.2**). It extracts PLS component counts, evaluates
+  imputed vs. true values for selected tracked variables, and visualizes
+  the behavior of the PLS model under left-censoring. The output forms
+  the basis of Figure 10.
 
-### **`rabbit_comparison.R`**  
-Main simulation engine for the core comparison experiment.  
-It generates CED and ADCS error matrices (raw and ceiling versions) across:  
+- `rabbit_time_recording.R`: A high-performance MPI-parallelized script
+  designed to benchmark computational runtime for all imputation methods.
+  For each choice of dimension *m* and missingness probability *p*, the
+  script generates synthetic censored datasets and records execution time
+  for methods including `lmrob`, `PLS`, `lrEM`, `lrDA`, `multLN`,
+  `multRepl`, `multKMSS`, `lrSVD`, `GBM`, and ad-hoc replacements. The
+  results are exported as CSV files and later visualized in Figure 9.
 
-- Feature dimensions: **M = 50, 500, 1000**  
-- Missingness probabilities: **p ∈ [0.05, 0.80]**
+- `rabbit_visulization.R`: This script compiles and visualizes results
+  produced by the main comparison experiment. It generates Figures 6–8,
+  including boxplots of method performance (Figure 6), mean error curves
+  across missingness probabilities (Figure 7), and dimensional-scaling
+  trends under fixed missingness (Figure 8). It also prepares publication-
+  quality PDF outputs.
 
-These outputs are used for:  
-- **Figure 6** – Boxplots of method performance  
-- **Figure 7** – Mean error trends across p  
+- `simulationdata_comparison.R`: The primary script for the appendix
+  simulation based on **zero-free synthetic compositional count data**
+  derived from the `microbialdata` example. It replicates the main
+  comparison framework at **m = 50** components but without naturally
+  occurring zeros, enabling assessment of method behavior under a
+  fully observed ground truth. Boxplots of error metrics are generated
+  for the appendix figures.
 
----
+- `rabbit_time_plotting.R` (if separated): This script reads the runtime
+  CSV files produced by `rabbit_time_recording.R` and constructs the
+  combined runtime figure (Figure 9), showing mean execution times as a
+  function of dimension *m* and missingness probability *p*.
 
-### **`rabbit_pls_check.R`**  
-A detailed local inspection of **PLS-based zero-imputation**.
+- `README.md`: The main documentation file summarizing the project,
+  experimental designs, methods compared, figure structure, and file
+  functionality.
 
-- Uses one replicate at **m = 200**, **p = 0.2**  
-- Tracks how PLS chooses the number of latent components  
-- Compares imputed vs. true values for selected variables  
-Produces:  
-- **Figure 10** (PLS diagnostic visualizations)
-
----
-
-### **`rabbit_time_recording.R`**  
-Parallel MPI-based runtime benchmark for all imputation methods.
-
-- Generates censored datasets from Rabbits.xlsx  
-- Applies: `lmrob`, `PLS`, `multLN`, `multRepl`, `lrDA`, `lrEM`,  
-  `multKMSS`, `lrSVD`, `GBM`, and ad-hoc rules  
-- Records elapsed times across **500 repetitions**  
-- Saves timing results as CSV files for visualization
-
-These results are used to build:  
-- **Figure 9** (runtime vs dimension & runtime vs missingness)
-
----
-
-### **`rabbit_visulization.R`**  
-A complete plotting script for the main comparison experiment.
-
-Produces:  
-- **Figure 6** – Boxplots of CED/ADCS errors  
-- **Figure 7** – Mean error line plots (vs missingness)  
-- **Figure 8** – Mean error vs dimension m under fixed p  
-
----
-
-### **`simulationdata_comparison.R`**  
-Appendix simulation using **zero-free synthetic compositional data** constructed from the `microbialdata` example.
-
-- Repeats the main comparison under **m = 50** components  
-- Highlights method behavior when no natural zeros exist  
-Provides the appendix figures.
-
----
-
-## **Authors**
-Tang, W.
-
----
-
-## **License**
-LGPL ≥ 2.1
+- `LICENSE`: Project license (LGPL ≥ 2.1).
