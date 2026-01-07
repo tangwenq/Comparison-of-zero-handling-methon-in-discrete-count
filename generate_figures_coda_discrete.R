@@ -245,10 +245,10 @@ P_dm <- extraDistr::rdirichlet(n_samples_dm, alpha_dm)
 count_dm <- t(apply(P_dm, 1, function(p) {
   rmultinom(1, size = N_total_dm, prob = p)
 }))
-colnames(count_dm) <- c("x", "y", "z")
+colnames(count_dm) <- c("x1", "x2", "x3")
 
-x_dm <- count_dm[, "x"]
-y_dm <- count_dm[, "y"]
+x1_dm <- count_dm[, "x1"]
+x2_dm <- count_dm[, "x2"]
 
 scales      <- c(1, 0.1, 0.01, 0.001)
 scale_label <- c("1x", "0.1x", "0.01x", "0.001x")
@@ -257,8 +257,8 @@ scale_label <- c("1x", "0.1x", "0.01x", "0.001x")
 data_list <- lapply(seq_along(scales), function(i) {
   s <- scales[i]
   data.frame(
-    x     = ceiling(x_dm * s),
-    y     = ceiling(y_dm * s),
+    x1    = ceiling(x1_dm * s),
+    x2    = ceiling(x2_dm * s),
     scale = scale_label[i]
   )
 })
@@ -273,9 +273,9 @@ high_data <- subset(all_data, scale == "1x")
 lr_stats <- all_data %>%
   group_by(scale) %>%
   summarise(
-    mean_x = mean(x),
-    mean_y = mean(y),
-    lr     = log10(mean_x / mean_y),
+    mean_x1 = mean(x1),
+    mean_x2 = mean(x2),
+    lr      = log10(mean_x1 / mean_x2),
     .groups = "drop"
   )
 
@@ -292,7 +292,6 @@ morandi_scales <- c(
   "1x"     = "#5C6D82"
 )
 
-
 fig_S1 <- ggplot() +
   geom_abline(
     slope = seq(0.1, 2, length.out = 25),
@@ -308,12 +307,12 @@ fig_S1 <- ggplot() +
   ) +
   geom_point(
     data = all_data,
-    aes(x, y, color = scale),
+    aes(x1, x2, color = scale),
     alpha = 0.75, size = 2
   ) +
   stat_density_2d(
     data = high_data,
-    aes(x, y),
+    aes(x1, x2),
     color = "grey35",
     size = 0.9
   ) +
@@ -321,54 +320,45 @@ fig_S1 <- ggplot() +
     values = morandi_scales,
     labels = legend_labels
   ) +
-  
-
   coord_cartesian(
-    xlim = c(0, max(high_data$x) * 1.02),
-    ylim = c(0, max(high_data$y) * 1.02)
+    xlim = c(0, max(high_data$x1) * 1.02),
+    ylim = c(0, max(high_data$x2) * 1.02)
   ) +
-  
-  labs(x = "x", y = "y", color = "scale") +
-  
+  labs(x = "x1", y = "x2", color = "scale") +
   theme_bw() +
   theme(
     plot.title = element_blank(),
-    
-
-    legend.position = c(0.14, 0.82),
-    
-
+    legend.position = c(0.14, 0.87),
     legend.background = element_rect(
       fill = alpha("white", 0.85),
       color = "grey80"
     ),
-   
     legend.title = element_text(size = 9),
     legend.text  = element_text(size = 8)
   )
 
 fig_S1
 
-save_figure(fig_S1, "Fig_S1_scaling_ceiling")
+save_figure(fig_S1, "Fig_S1_scaling_ceiling", width = 5.5, height = 5.5)
 
 ############################################################
 ## Fig 4: Scaling + ceiling quantization (log-ratio shifts)
 ############################################################
 
-valid_idx <- which(x_dm > 0 & y_dm > 0)
-log_raw   <- log10(x_dm[valid_idx] / y_dm[valid_idx])
+valid_idx <- which(x1_dm > 0 & x2_dm > 0)
+log_raw   <- log10(x1_dm[valid_idx] / x2_dm[valid_idx])
 
 per_point <- lapply(seq_along(scales), function(i) {
   s   <- scales[i]
   lab <- scale_label[i]
   
-  x_c <- ceiling(x_dm[valid_idx] * s)
-  y_c <- ceiling(y_dm[valid_idx] * s)
+  x1_c <- ceiling(x1_dm[valid_idx] * s)
+  x2_c <- ceiling(x2_dm[valid_idx] * s)
   
-  keep <- (x_c > 0 & y_c > 0)
+  keep <- (x1_c > 0 & x2_c > 0)
   data.frame(
     scale = lab,
-    shift = log10(x_c[keep] / y_c[keep]) - log_raw[keep]
+    shift = log10(x1_c[keep] / x2_c[keep]) - log_raw[keep]
   )
 })
 
@@ -379,9 +369,16 @@ fig_S2 <- ggplot(shift_df, aes(scale, shift)) +
   geom_boxplot(fill = "#002FA7", alpha = 0.8) +
   theme_bw() +
   labs(
-    y = expression(Delta * log[10] (x / y)),
+    y = expression(Delta * log[10] (x[1] / x[2])),
     x = "Scale"
   )
 
-save_figure(fig_S2, "Fig_S2_logratio_shift")
+
+
+
+
+
+
+save_figure(fig_S2, "Fig_S2_logratio_shift",  width = 5.5, height = 5.5)
+
 
